@@ -1,6 +1,6 @@
 {
   "name": "tus-standalone-server",
-  "version": "0.0.11",
+  "version": "0.0.12",
   "description": "For mirgation",
   "author": {
     "name": "JonesHong",
@@ -12,7 +12,14 @@
   "module": "build/module/index.js",
   "repository": "https://github.com/JonesHong/tus-standalone-server",
   "license": "MIT",
-  "keywords": [],
+  "keywords": [
+    "tus",
+    "resumable",
+    "upload",
+    "protocol",
+    "server",
+    "standalone"
+  ],
   "scripts": {
     "build": "run-p build:*",
     "build:main": "ttsc -p tsconfig.json",
