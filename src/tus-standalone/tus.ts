@@ -7,6 +7,17 @@ function Singleton(target: any) {
         return target.instance;
     }
 }
+function singleton(target: any) {
+    let constructor = target.constructor;
+    constructor.instance = null;
+
+    constructor.getInstance = function () {
+        if (!constructor.instance) {
+            constructor.instance = new constructor();
+        }
+        return constructor.instance;
+    };
+}
 
 @Singleton
 class _TusRegister {
@@ -48,3 +59,4 @@ class _TusRegister {
 export const TusRegister = _TusRegister.getInstance();
 
 
+TusRegister

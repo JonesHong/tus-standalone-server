@@ -1,7 +1,7 @@
 {
   "name": "tus-standalone-server",
   "version": "0.0.12",
-  "description": "For mirgation",
+  "description": "extends tus-node-server",
   "author": {
     "name": "JonesHong",
     "email": "latte831104@gmail.com"

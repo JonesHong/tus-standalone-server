@@ -22,11 +22,11 @@ This library encapsulates the standalone server of **tus-node-server**, provides
  }  
  ```
  * **isRandomFileName**:
-     If it set by false, will cause filename unique.
+     If it is set to false, it will not allow the upload of files with the same name even if the content of the file is different.
  * **splitFileByMIMEType**:
-     It can split file to there folder by MIMEType.
+     Sort the files into their respective folders according to their MIME Type.
  * **splitFileByFunctionality**:
-     It can split file to there folder by functionality.
+     Sort the files into their respective folders according to their functions.
 
 ## Example
 
@@ -38,13 +38,19 @@ let TusServer2 = new TusStandalone({port: 3000});
 let TusServer3 = new TusStandalone({ host: "127.0.0.1", port: 3333, path: "/ttttt", options: { splitFileByMIMEType: null } });
 let TusServer4 = new TusStandalone({ options: { isSavingFileToTemp: true, splitFileByFunctionality: "ad", splitFileByMIMEType:null } });
 
-console.log(TusRegister)
-/** _TusRegister {
-  _rangeMin: 1,
-  _rangeMax: 65534,
-  _OccupiedPortSet: Set(2) { 1080, 3333 },
-  _ServePortSet: Set(4) { 1080, 3000, 56832, 15657 },
-  _ServerMap: Map(4) {
+console.log(TusRegister):
+
+/** read only */
+_TusRegister {
+  /** What is the smallest port used randomly when the port is occupied */
+  portRangeMin: 1, 
+  /** What is the biggest port used randomly when the port is occupied */
+  portRangeMax: 65534, 
+  /** Upon using detect-port to check, it was discovered that the port is already in use. */
+  OccupiedPortSet: Set(2) { 1080, 3333 },
+  /** The port that is occupied after the server successfully starts. */
+  ServePortSet: Set(4) { 1080, 3000, 56832, 15657 },
+  ServerMap: Map(4) {
     'http://127.0.0.1:1080/files' => TusServer {
       _events: [Object: null prototype],
       _eventsCount: 3,
@@ -72,26 +78,69 @@ console.log(TusRegister)
       _datastore: [FileStore],
       [Symbol(kCapture)]: false
     },
-    'http://127.0.0.1:15657/ttttt' => TusServer {
-      _events: [Object: null prototype],
-      _eventsCount: 3,
-      _maxListeners: undefined,
-      options: [Object],
-      handlers: [Object],
-      _datastore: [FileStore],
-      [Symbol(kCapture)]: false
-    }
+    'http://127.0.0.1:15657/ttttt' => TusServer {...}
   }
 }
-*/
 ```
 ## Features
 
 #### GET handler
 * http://```<HOST>```:```<PORT>```/uploads-list
-  To get all the upload file from different server.
+  You can view the list of all uploaded files through this URL, even though different servers still point to the same storage space.
+  ```json
+  // 20230129185413
+  // http://127.0.0.1:1080/uploads-list
+  
+    {
+        "file_struct": {
+            "_files": [
+                "aMVrBeut-3PJNz-m7gb3-9QTiY-2KKPQV9vS.jpg",
+                "yN3zPwDk-yzQJ0-8MIEu-0reBS-6T05YKbGt.pdf"
+            ],
+            "ad": {
+                "_files": [
+                    "sAo1DGYc-BH0GU-hU59p-zQ8Oz-RzsYuvIlG.mp4"
+                ]
+            },
+            "application": {
+                "_files": [
+                    "0a7985a0-570f-4c9d-a287-0a4feac813e2.pdf"
+                ]
+            },
+            "image": {
+                "_files": [
+                    "431bf697-a55a-469d-bd2a-11ea85e2f573.gif"
+                ]
+            },
+            "temp": {
+                "_files": [ ]
+            },
+            "video": {
+                "_files": [
+                    "a1ad7ad0-7c79-4e64-bbae-5976fb5ce7bc.mp4"
+                ]
+            }
+        },
+        "full_path": {
+            "_files": [
+                "C:\\Users\\User\\Documents\\work\\uploads\\ad\\sAo1DGYc-BH0GU-hU59p-zQ8Oz-RzsYuvIlG.mp4",
+                "C:\\Users\\User\\Documents\\work\\uploads\\aMVrBeut-3PJNz-m7gb3-9QTiY-2KKPQV9vS.jpg",
+                "C:\\Users\\User\\Documents\\work\\uploads\\application\\0a7985a0-570f-4c9d-a287-0a4feac813e2.pdf",
+                "C:\\Users\\User\\Documents\\work\\uploads\\image\\431bf697-a55a-469d-bd2a-11ea85e2f573.gif",
+                "C:\\Users\\User\\Documents\\work\\uploads\\video\\a1ad7ad0-7c79-4e64-bbae-5976fb5ce7bc.mp4",
+                "C:\\Users\\User\\Documents\\work\\uploads\\yN3zPwDk-yzQJ0-8MIEu-0reBS-6T05YKbGt.pdf"
+            ],
+            "sAo1DGYc-BH0GU-hU59p-zQ8Oz-RzsYuvIlG.mp4": "C:\\Users\\User\\Documents\\work\\uploads\\ad\\sAo1DGYc-BH0GU-hU59p-zQ8Oz-RzsYuvIlG.mp4",
+            "aMVrBeut-3PJNz-m7gb3-9QTiY-2KKPQV9vS.jpg": "C:\\Users\\User\\Documents\\work\\uploads\\aMVrBeut-3PJNz-m7gb3-9QTiY-2KKPQV9vS.jpg",
+            "0a7985a0-570f-4c9d-a287-0a4feac813e2.pdf": "C:\\Users\\User\\Documents\\work\\uploads\\application\\0a7985a0-570f-4c9d-a287-0a4feac813e2.pdf",
+            "431bf697-a55a-469d-bd2a-11ea85e2f573.gif": "C:\\Users\\User\\Documents\\work\\uploads\\image\\431bf697-a55a-469d-bd2a-11ea85e2f573.gif",
+            "a1ad7ad0-7c79-4e64-bbae-5976fb5ce7bc.mp4": "C:\\Users\\User\\Documents\\work\\uploads\\video\\a1ad7ad0-7c79-4e64-bbae-5976fb5ce7bc.mp4",
+            "yN3zPwDk-yzQJ0-8MIEu-0reBS-6T05YKbGt.pdf": "C:\\Users\\User\\Documents\\work\\uploads\\yN3zPwDk-yzQJ0-8MIEu-0reBS-6T05YKbGt.pdf"
+        }
+    }
+  ```
 * http://```<HOST>```:```<PORT>```/files/```<FILENAME>```
-  To download the file with filename.
+  You can download the uploaded files according to the file name through this URL
 
 
 <!-- 說明小圖示 -->
