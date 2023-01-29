@@ -85,6 +85,13 @@ console.log(TusRegister)
 }
 */
 ```
+## Features
+
+#### GET handler
+* http://```<HOST>```:```<PORT>```/uploads-list
+  To get all the upload file from different server.
+* http://```<HOST>```:```<PORT>```/files/```<FILENAME>```
+  To download the file with filename.
 
 
 <!-- 說明小圖示 -->
