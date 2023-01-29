@@ -60,24 +60,8 @@ _TusRegister {
       _datastore: [FileStore],
       [Symbol(kCapture)]: false
     },
-    'http://127.0.0.1:3000/files' => TusServer {
-      _events: [Object: null prototype],
-      _eventsCount: 3,
-      _maxListeners: undefined,
-      options: [Object],
-      handlers: [Object],
-      _datastore: [FileStore],
-      [Symbol(kCapture)]: false
-    },
-    'http://127.0.0.1:56832/files' => TusServer {
-      _events: [Object: null prototype],
-      _eventsCount: 3,
-      _maxListeners: undefined,
-      options: [Object],
-      handlers: [Object],
-      _datastore: [FileStore],
-      [Symbol(kCapture)]: false
-    },
+    'http://127.0.0.1:3000/files' => TusServer {...},
+    'http://127.0.0.1:56832/files' => TusServer {...},
     'http://127.0.0.1:15657/ttttt' => TusServer {...}
   }
 }
@@ -87,7 +71,7 @@ _TusRegister {
 #### GET handler
 * http://```<HOST>```:```<PORT>```/uploads-list
   You can view the list of all uploaded files through this URL, even though different servers still point to the same storage space.
-  ```json
+  ```jsonc
   // 20230129185413
   // http://127.0.0.1:1080/uploads-list
   
