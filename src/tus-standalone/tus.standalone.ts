@@ -1,18 +1,19 @@
 
 import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync } from 'fs';
-import { catchError, delay, filter, from, iif, map, mergeMap, of, pipe, retry, switchMap, tap, throwError } from 'rxjs';
+import { catchError, delay, filter, from, iif, map, mergeMap, of, pipe, retry, switchMap, tap, throwError, timer } from 'rxjs';
 import { IncomingMessage, ServerResponse } from 'http';
 import { resolve } from 'path';
 import _ from 'lodash';
-import { FileUploadTusOptions } from 'src/types/uploader';
-import { FileMetadata } from 'src/types/file-metadata';
+import { FileUploadTusOptions } from 'src/tus-standalone/uploader';
+// import { FileMetadata } from 'src/tus-standalone/file-metadata';
 import { v4 } from 'uuid';
+import { FileMetadata } from './fileMetadata';
+import { TusRegister } from './tus';
 
 const detect = require('detect-port');
 const tus = require('tus-node-server');
 
 const EVENTS = tus.EVENTS;
-
 
 export class TusStandalone {
     private _name = "TusStandalone";
@@ -43,6 +44,7 @@ export class TusStandalone {
 
     private mkFilePathToSave = (filePathToSave: string, { mimetype }: { mimetype?: string, functionality?: string }) => {
 
+
         let splitFileByMIMEType = this.DefaultFileUploadTusOptions['splitFileByMIMEType'];
         if (!!filePathToSave.includes("temp")) {
             splitFileByMIMEType = null;
@@ -51,7 +53,9 @@ export class TusStandalone {
             new tus.FileStore({ directory: filePathToSave });
             this.tusServer.datastore.directory = filePathToSave;
         }
-
+        // else {
+        //     !!functionality ? filePathToSave += `/${functionality}` : null;
+        // }
         !!this.DefaultFileUploadTusOptions.splitFileByFunctionality ? filePathToSave += `/${this.DefaultFileUploadTusOptions.splitFileByFunctionality}` : null;
 
         // e.g. splitFileByMIMEType = 'video/mp4';
@@ -84,6 +88,7 @@ export class TusStandalone {
     }
 
     private fileNameFromRequest = (req) => {
+        // let fileName;
         const metadata = this.getFileMetadata(req);
 
         const prefix: string = v4();
@@ -130,9 +135,10 @@ export class TusStandalone {
     }
 
 
-
-    public tusServer
-
+    private _tusServer
+    public get tusServer() {
+        return this._tusServer
+    }
     private _payloadWithFileStruct = { "_files": [] };
     public get payloadWithFileStruct() {
         return this._payloadWithFileStruct
@@ -141,27 +147,27 @@ export class TusStandalone {
     public get payloadWithFullPath() {
         return this._payloadWithFullPath
     }
-    // private _serverResponse!: ServerResponse;
-    private GetAllUpload = (serverResponse?: ServerResponse) => {
-        // let GetPath: Map<string, any> = this.tusServer.handlers.GET.paths;
-        // let ReqUrl = res.req.url;
 
+    private GetAllUpload = (serverResponse?: ServerResponse) => {
+        let GetPath: Map<string, any> = this.tusServer.handlers.GET.paths;
+        // let ReqUrl = res.req.url;
         // console.log(this.tusServer.handlers.GET.paths, res.req.url)
         // let filePathToSave = this.mkFilePathToSave(this.DefaultFileUploadTusOptions['filePathToSave'], { "mimetype": this.DefaultFileUploadTusOptions.splitFileByMIMEType });
         let filePathToSave = this.DefaultFileUploadTusOptions['filePathToSave'];
+        // console.log(this.port, filePathToSave, this.DefaultFileUploadTusOptions)
 
         let payloadWithFileStruct = { "_files": [] },
             payloadWithFullPath = { "_files": [] };
         this._payloadWithFileStruct = payloadWithFileStruct;
         this._payloadWithFullPath = payloadWithFullPath;
 
-        const GetAllFilesStruct$ = (path: string) => {
+        const GetAllFilesStruct$ = (path: string, dirLevelCount = 0) => {
             let dirList = path.split('/').slice(2);
             return from(readdirSync(path, { "withFileTypes": true }))
                 .pipe(
                     filter((Dirent) => {
                         if (Dirent.isDirectory()) {
-                            if (dirList.length == 0) {
+                            if (dirLevelCount == 0 || dirList.length == 0) {
                                 if (!!!this.payloadWithFileStruct[Dirent.name]) this.payloadWithFileStruct[Dirent.name] = { _files: [] };
                             } else {
                                 const recursiveMakeFolder = (pointer = this.payloadWithFileStruct, count = 0) => {
@@ -185,7 +191,7 @@ export class TusStandalone {
                                 res.end(fileBuffer)
                             })
 
-                            if (dirList.length == 0) {
+                            if (dirLevelCount == 0 || dirList.length == 0) {
                                 if (!!!this.payloadWithFileStruct['_files']) this.payloadWithFileStruct['_files'] = [];
                                 this.payloadWithFileStruct['_files'].push(Dirent.name)
                             } else {
@@ -205,7 +211,8 @@ export class TusStandalone {
                         return Dirent.isDirectory()
                     }),
                     mergeMap(Dirent => {
-                        return GetAllFilesStruct$(`${path}/${Dirent.name}`)
+                        dirLevelCount += 1
+                        return GetAllFilesStruct$(`${path}/${Dirent.name}`, dirLevelCount)
                     }),
                     catchError(err => of(err))
                 )
@@ -218,13 +225,13 @@ export class TusStandalone {
             )
             .subscribe({
                 next: data => {
-                    console.log(`GetAllUploadsList next: ${data}`);
+                    // console.log(`GetAllUploadsList next: ${data}`);
                 },
                 error: error => {
                     console.log(`GetAllUploadsList error: ${error}`);
                 },
                 complete: () => {
-                    console.log('GetAllUploadsList Done!');
+                    // console.log('GetAllUploadsList Done!');
                     if (!!serverResponse) {
                         serverResponse.end(JSON.stringify({ file_struct: this.payloadWithFileStruct, full_path: this.payloadWithFullPath }));
                     }
@@ -232,6 +239,9 @@ export class TusStandalone {
             })
     }
 
+
+    newRandomPort!: number;
+    getNewRandomPort = () => { this.newRandomPort = Math.floor(Math.random() * (TusRegister.portRangeMax - TusRegister.portRangeMin + 1) + TusRegister.portRangeMin); return this.newRandomPort };
     constructor(datas?: { host?: string, port?: number, path?: string, options?: FileUploadTusOptions }) {
         if (!!datas?.host) this._host = datas.host;
         if (!!datas?.port) this._port = datas.port;
@@ -243,11 +253,10 @@ export class TusStandalone {
             }
         }
 
-        this.tusServer = new tus.Server({
+        this._tusServer = new tus.Server({
             path: this.path,
             namingFunction: this.fileNameFromRequest
         });
-        // console.log(this.tusServer)
 
         this._DefaultFileUploadTusOptions['tempFilePathToSave'] = this._DefaultFileUploadTusOptions['filePathToSave'] + '/temp';
         if (!!this.DefaultFileUploadTusOptions['isSavingFileToTemp'])
@@ -255,32 +264,109 @@ export class TusStandalone {
         else
             this.tusServer.datastore = new tus.FileStore({ directory: this.DefaultFileUploadTusOptions.filePathToSave });
 
-        of({ host: this.host, port: this.port })
+        process.on('uncaughtException', (error) => {
+            let errorStr = String(error)
+            // 其他处理机制
+            if (errorStr.match(/listen EACCES: permission denied/) ||
+                errorStr.match(/listen EADDRINUSE: address already in use/)) {
+                let lastColonIndex = errorStr.lastIndexOf(":"),
+                    portInString = errorStr.slice(lastColonIndex + 1);
+                if (this.port == Number(portInString)) {
+                    TusRegister.OccupiedPortSet.add(this.port);
+                    TusRegister.ServePortSet.delete(this.port)
+                    this.getNewRandomPort();
+                    this._port = this.newRandomPort;
+                    TusRegister.isPrintDetail ? null : console.log(`${errorStr}, retry with port `);
+                    this.serverInitCount += 1;
+                    this.initializeTusServer();
+                }
+            }
+        })
+        this.initializeTusServer();
+    }
+
+    serverInitCount = 0;
+    initializeTusServer() {
+        const DetectPort = (portToDetect = this.port, detectPortCount = 0) => {
+            let randomSec = Math.floor(Math.random() * (500 - 200 + 1) + 200);
+            TusRegister.isPrintDetail ? null : console.log(`[RetryCount] \n{detectPortCount: ${detectPortCount}, serverInitCount:${this.serverInitCount}}`);
+            return of({})
+                .pipe(
+                    delay(randomSec),  // delay every times
+                    mergeMap(() => from(detect(portToDetect))),
+                    switchMap((_port) => {
+
+                        return iif(
+                            () => {
+                                let condition = portToDetect == _port && // 預測的 port與 檢查的 port若是相等意思就是無佔用
+                                    !TusRegister.ServePortSet.has(portToDetect) && // Sever若是已經被 listen則為占用
+                                    !TusRegister.OccupiedPortSet.has(portToDetect) && // 透過 detect-port檢查過已被占用的 port
+                                    detectPortCount <= 20 && // retry detectPort 20 times
+                                    this.serverInitCount <= 10; // retry detectPort 10 times
+
+                                if (condition) {
+                                    TusRegister.isPrintDetail ? null : console.log(`port: ${portToDetect} was not occupied`);
+                                }
+                                else {
+                                    TusRegister.OccupiedPortSet.add(portToDetect);
+                                    this.getNewRandomPort();
+                                    TusRegister.isPrintDetail ? null : console.log(`port: ${portToDetect} was occupied, try port: ${this.newRandomPort}`);
+                                    this._port = this.newRandomPort;
+                                }
+
+                                return condition;
+                            },
+                            of(_port) // not occupied
+                                .pipe(
+                                    tap(() => {
+                                        try {
+                                            this.tusServer.listen({ host: this.host, port: this.port }, () => {
+                                                TusRegister.ServePortSet.add(this.port);
+                                                TusRegister.ServerMap.set(`http://${this.host}:${this.port}${this.path}`, this.tusServer)
+                                                console.log(`[${new Date().toLocaleTimeString()}] tus server listening at http://${this.host}:${this.port}${this.path}`);
+                                            });
+                                        } catch (error) {
+                                            return throwError(() => error)
+                                        }
+                                        this.GetAllUpload();
+
+                                        this.tusServer.get("/uploads-list", (req: IncomingMessage, res: ServerResponse) => {
+                                            // Read from your DataStore
+                                            this.GetAllUpload(res);
+
+                                        })
+                                    })
+                                ),
+                            of({}).pipe(
+                                mergeMap => {
+                                    detectPortCount += 1;
+                                    return DetectPort(this.newRandomPort, detectPortCount)
+                                }
+                            )  // occupied, try port:
+                        )
+                    }),
+                    retry({
+                        delay: (err, count) => {
+                            let randomSec = Math.floor(Math.random() * (500 - 200 + 1) + 200);
+                            TusRegister.isPrintDetail ? null : console.log('RetryCount: ', count, '\n', err);
+                            return timer(randomSec)
+                        },
+                        count: 10
+                    }),
+                    catchError(err => {
+                        // console.log("DetectPort.catchError", err)
+                        return of(err)
+                    }),
+                )
+        };
+
+        of({})
             .pipe(
-                delay(5),
-                mergeMap(notUse => from(detect(this.port))),
-                map((_port: number) => {
-                    // this._host = host;
-                    if (this.port == _port) {
-                        console.log(`port: ${this.port} was not occupied`);
-                    } else {
-                        console.log(`port: ${this.port} was occupied, try port: ${_port}`);
-                        this._port = _port;
-                    }
+                delay(50), // delay for other server
+                mergeMap(() => DetectPort(this.port)),
+                // delay(3000),
+                tap(() => {
 
-                    this.tusServer.listen({ host: this.host, port: this.port }, () => {
-                        console.log(`[${new Date().toLocaleTimeString()}] tus server listening at http://${this.host}:${this.port}${this.path}`);
-                    });
-
-
-                    this.GetAllUpload();
-
-                    this.tusServer.get("/uploads-list", (req: IncomingMessage, res: ServerResponse) => {
-                        // Read from your DataStore
-                        this.GetAllUpload(res);
-                    })
-                }),
-                tap(notUse => {
                     this.tusServer.on(tus.EVENTS.EVENT_UPLOAD_COMPLETE, (event) => {
 
                         let file = event['file'];
@@ -289,69 +375,66 @@ export class TusStandalone {
 
                         let source = `${this.DefaultFileUploadTusOptions['tempFilePathToSave']}/${file.id}`,
                             destination = `${filePathToSave}/${file.id}`;
-                        // console.log("filePathToSave: ", filePathToSave);
+
                         const checkPathRetryPipe = (condition) => pipe(
-                            mergeMap(notUse => {
-                                return of(notUse)
+                            mergeMap(() => {
+                                return of({})
                                     .pipe(
-                                        switchMap(notUse => iif
+                                        switchMap(() => iif
                                             (condition,
-                                                of(notUse),
+                                                of({}),
                                                 throwError(() => new Error("not exist")))),
                                         retry({ delay: 50, count: 5 })
                                     )
                             }),
                         )
                         /**
-                         * FromTempToUploadsSub
                          * 1. 根據 splitFileByMIMEType決定是否創建資料夾到 ./uploads
                          * 2. 從“目標地” ./temp-uploads複製檔案到”目的地“ ./uploads/* （同上）
                          * 3. 檢查“目的地”複製的檔案是否存在
                          * 4. 如果複製成功，刪除“目標地”檔案
                          * 5. 檢查“目標地”檔案是否刪除成功
                          */
-                        of(file)
+                        const FromTempToUploadsSub = of(file)
                             .pipe(
-                                filter(notUse => !!this.DefaultFileUploadTusOptions.isSavingFileToTemp),
-                                mergeMap(notUse => of(mkdirSync(filePathToSave, { recursive: true }))),
-                                mergeMap(notUse => of(copyFileSync(source, destination))),
+                                filter(() => !!this.DefaultFileUploadTusOptions.isSavingFileToTemp),
+                                mergeMap(() => of(mkdirSync(filePathToSave, { recursive: true }))),
+                                mergeMap(() => of(copyFileSync(source, destination))),
                                 checkPathRetryPipe(() => !!existsSync(destination)),
-                                mergeMap(notUse => of(rmSync(source))),
+                                mergeMap(() => of(rmSync(source))),
                                 checkPathRetryPipe(() => !!!existsSync(source)),
                                 catchError(err => of(err))
                             )
                             .subscribe({
                                 next: data => {
-                                    console.log(`FromTempToUploadsSub next: ${data}`);
+                                    // console.log(`FromTempToUploadsSub next: ${data}`);
                                 },
                                 error: error => {
                                     console.log(`FromTempToUploadsSub error: ${error}`);
                                 },
                                 complete: () => {
-                                    console.log('FromTempToUploadsSub Done!');
+                                    // console.log('FromTempToUploadsSub Done!');
                                     this.GetAllUpload();
                                 }
                             })
                         // console.log(`\n\n`)
                     });
                 }),
-                retry({ delay: 500, count: 10 }),
                 catchError(err => {
-                    // console.log(891208210, err)
                     return of(err)
                 }),
+
             )
             .subscribe({
                 next: data => {
-                    console.log(`TusStandalone next: ${data}`);
+                    // console.log(`TusStandalone next: ${data}`);
                 },
                 error: error => {
                     console.log(`TusStandalone error: ${error}`);
                 },
                 complete: () => {
-                    console.log('TusStandalone Done!');
+                    // console.log('TusStandalone Done!');
                 }
             })
-
     }
 }
