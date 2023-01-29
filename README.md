@@ -69,7 +69,7 @@ _TusRegister {
 ## Features
 
 #### GET handler
-* http://```<HOST>```:```<PORT>```/uploads-list
+* http://```<HOST>```:```<PORT>```/uploads-list  
   You can view the list of all uploaded files through this URL, even though different servers still point to the same storage space.
   ```jsonc
   // 20230129185413
@@ -123,7 +123,7 @@ _TusRegister {
         }
     }
   ```
-* http://```<HOST>```:```<PORT>```/files/```<FILENAME>```
+* http://```<HOST>```:```<PORT>```/files/```<FILENAME>```  
   You can download the uploaded files according to the file name through this URL
 
 

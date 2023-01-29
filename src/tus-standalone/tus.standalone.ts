@@ -276,7 +276,7 @@ export class TusStandalone {
                     TusRegister.ServePortSet.delete(this.port)
                     this.getNewRandomPort();
                     this._port = this.newRandomPort;
-                    TusRegister.isPrintDetail ? null : console.log(`${errorStr}, retry with port `);
+                    TusRegister.isPrintDetail ? console.log(`${errorStr}, retry with port `) : null;
                     this.serverInitCount += 1;
                     this.initializeTusServer();
                 }
@@ -305,12 +305,12 @@ export class TusStandalone {
                                     this.serverInitCount <= 10; // retry detectPort 10 times
 
                                 if (condition) {
-                                    TusRegister.isPrintDetail ? null : console.log(`port: ${portToDetect} was not occupied`);
+                                    TusRegister.isPrintDetail ? console.log(`port: ${portToDetect} was not occupied`) : null;
                                 }
                                 else {
                                     TusRegister.OccupiedPortSet.add(portToDetect);
                                     this.getNewRandomPort();
-                                    TusRegister.isPrintDetail ? null : console.log(`port: ${portToDetect} was occupied, try port: ${this.newRandomPort}`);
+                                    TusRegister.isPrintDetail ? console.log(`port: ${portToDetect} was occupied, try port: ${this.newRandomPort}`) : null;
                                     this._port = this.newRandomPort;
                                 }
 
@@ -348,7 +348,7 @@ export class TusStandalone {
                     retry({
                         delay: (err, count) => {
                             let randomSec = Math.floor(Math.random() * (500 - 200 + 1) + 200);
-                            TusRegister.isPrintDetail ? null : console.log('RetryCount: ', count, '\n', err);
+                            TusRegister.isPrintDetail ? console.log('RetryCount: ', count, '\n', err) : null;
                             return timer(randomSec)
                         },
                         count: 10
