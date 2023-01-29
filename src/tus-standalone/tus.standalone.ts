@@ -289,7 +289,7 @@ export class TusStandalone {
     initializeTusServer() {
         const DetectPort = (portToDetect = this.port, detectPortCount = 0) => {
             let randomSec = Math.floor(Math.random() * (500 - 200 + 1) + 200);
-            TusRegister.isPrintDetail ? null : console.log(`[RetryCount] \n{detectPortCount: ${detectPortCount}, serverInitCount:${this.serverInitCount}}`);
+            TusRegister.isPrintDetail ? console.log(`[RetryCount] \n{detectPortCount: ${detectPortCount}, serverInitCount:${this.serverInitCount}}`) : null;
             return of({})
                 .pipe(
                     delay(randomSec),  // delay every times
